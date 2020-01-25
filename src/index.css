@@ -1,13 +1,51 @@
+/* Main CSS for background static elements */
+
+/* Global CSS */ 
+* {
+  box-sizing: border-box;
+}
+
+p {
+  color: rgb(100, 100, 100);
+}
+
+#root {
+  padding-top: 20px;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  height: 100%;
+  width: 100%;
+  font-family: 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-image: url(./Images/clouds.jpg);
+  background-size: cover;
+  background-attachment: fixed;
+  overflow: auto;
+  
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+footer {
+  position: fixed;
+  width: 100%;
+  bottom: 0;
+  height: 30px;
+  background-color: #fff;
+}
+
+header {
+  background-color: #fff;
+  height: 70px;
+  width: 100%;
+}
+
+/* Page Title */
+h1 {
+  padding: 15px;
+  margin-top: 0;
+  color: rgb(70, 70, 70);
 }
