@@ -13,167 +13,138 @@ export default class WeatherApp extends React.Component {
     this.state = {
       dataLoaded: false,
       requestError: false,
+      errorMessage: '',
       searchInput: '',
       loading: false,
       parsedResult: {
         city: '',
         country: '',
+        time:'',
+        temp: {
+          main: '',
+          feel: ''
+        },
+        weather: {
+          main: '',
+          id: '',
+          humidity: '',
+          downfall: ''
+        },
+        wind: {
+          speed: '',
+          degree: ''
+        },
         sun: {
           rise: '',
           set: ''
         },
-        days: [],
       },
-      unit: '℃'
+      unit: 'metric'
     };
     
-    this.handleInput = this.handleInput.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
-    this.disableError = this.disableError.bind(this);
-    this.handleChangeUnit = this.handleChangeUnit.bind(this);
+    this.handleSearchBoxInput = this.handleSearchBoxInput.bind(this);
+    this.handleSearchBoxSubmit = this.handleSearchBoxSubmit.bind(this);
+    this.disableErrorBox = this.disableErrorBox.bind(this);
+    this.handleUnitChange = this.handleUnitChange.bind(this);
   }
 
-  //Takes an offset(Seconds) and an Unix time stamp and returns HH:mm
-  getTimeFormated = (timeIn, offset) => {
+  getTimeFormatedToHours = (timeIn, offset) => {
     return moment.unix(timeIn).utcOffset(offset/60).format('HH:mm');
   };
 
-  
-  initialTempConvert(temp){
-    if(this.state.unit === '℃') {
-      return Math.round(temp - 273.15);
-    }
-    if(this.state.unit === '℉') {
-      return Math.round(((temp - 273.15) * 9) / 5 + 32);
-    }
-  }
-
-  //Fetch API data based on user input and return if successfull
-  async fetchWeatherData(input) {
-    const res = await fetch (
-      `https://api.openweathermap.org/data/2.5/forecast?q=${input}&mode=JSON&APPID=3090f6281aeed0bbf2ecc5d48ccd80db`, 
-      {mode: 'cors'}
-    );
-    if (res.status === 200) {
-      return res.json();
-    }
+  getTimeFormatedToDate = (timeIn, offset) => {
+    return moment.unix(timeIn).utcOffset(offset/60).format('YYYY-MM-DD HH:mm');
   };
 
-  //Updates states after user submits input
-  async handleSubmit(event) {
+  async fetchWeatherData(input, unit) {
+      const res = await fetch (
+          `https://api.openweathermap.org/data/2.5/weather?q=${input}&mode=JSON&APPID=3090f6281aeed0bbf2ecc5d48ccd80db&units=${unit}`, 
+          {mode: 'cors'}
+      );
+      return new Promise((resolve, reject) => {
+        if (res.status === 200) {
+          resolve(res.json());
+        } else {
+          reject('City not found');
+        }
+      }) 
+  };
+
+  async handleSearchBoxSubmit(event) {
     event.preventDefault();
     this.setState({
       loading: true,
       dataLoaded: false
     });
     try {
-      
-      const weatherData =  await this.fetchWeatherData(this.state.searchInput);
-      const list = weatherData.list;
-
-      //Parses list data sorts it by day
-      //Outputs an array of arrays where days[0] holds the data for currentday days[1] holds the data for tomorrow etc.
-      //EXAMPLE: days[0][0] contains the data for the first entry of the current day
-      //EXAMPLE: days[1][2] contains the third entry for tomorrows forecast
-      //Each entry is an object which contains the following attributes:
-      //  date: YYYY-MM-DD, time: HH:MM, temp(K), tempLow(K), tempHigh(K), tempFeel(K), humidity(%), 
-      //  weatherMain, weatherDesc, weatherId, weatherDownfall(mm),
-      //  windSpeed(m/s), windDeg. 
-      //EXAMPLE: days[0][0].temp contains the temprature for the first entry
-      //EXAMPLE: days[1][2].weatherDownfall contains the downfall amount of the third entry for tomorrows forecast.
-      let lastDay = 0;
-      let days = [];
-      for(let i = 0; i < list.length; i++) {
-        let day = list[i].dt_txt.slice(8, 10)
-
-        if(lastDay !== day) {
-          days.push([]);
-        }
-        days[days.length-1].push({
-          date: list[i].dt_txt.slice(0,10),
-          time: list[i].dt_txt.slice(11, 16),
-          temp: this.initialTempConvert(list[i].main.temp),
-          tempLow: this.initialTempConvert(list[i].main.temp_min),
-          tempHigh: this.initialTempConvert(list[i].main.temp_max),
-          tempFeel: this.initialTempConvert(list[i].main.feels_like),
-          humidity: list[i].main.humidity,
-          weatherMain: list[i].weather[0].main,
-          weatherDesc: list[i].weather[0].description,
-          weatherId: list[i].weather[0].id,
-          weatherDownfall: (list[i].rain ? list[i].rain['3h'] : 0) || (list[i].snow ? list[i].snow['3h'] : 0),
-          windSpeed: list[i].wind.speed,
-          windDegree: list[i].wind.deg
-        });
-        lastDay = day;
-      }
+      const weatherData = await this.fetchWeatherData(this.state.searchInput, this.state.unit);
 
       this.setState({
         parsedResult: {
-          city: weatherData.city.name,
-          country: weatherData.city.country,
-          days: days,
+          city: weatherData.name,
+          country: weatherData.sys.country,
+          time: this.getTimeFormatedToDate(weatherData.dt, weatherData.timezone),
+          temp: {
+            main: Math.round(weatherData.main.temp),
+            feel: Math.round(weatherData.main.feels_like)
+          }, 
+          weather: {
+            main: weatherData.weather[0].main,
+            humidity: weatherData.main.humidity,
+            id: weatherData.weather[0].id,
+            downfall: (weatherData.rain ? weatherData.rain['3h'] : 0) || (weatherData.snow ? weatherData.snow['3h'] : 0),
+          },
+          wind: {
+            speed: weatherData.wind.speed,
+            degree: weatherData.wind.deg,
+          },
           sun: {
-            rise: this.getTimeFormated(weatherData.city.sunrise, weatherData.city.timezone),
-            set: this.getTimeFormated(weatherData.city.sunset, weatherData.city.timezone)
+            rise: this.getTimeFormatedToHours(weatherData.sys.sunrise, weatherData.timezone),
+            set: this.getTimeFormatedToHours(weatherData.sys.sunset, weatherData.timezone)
           }
         },
         loading: false,
-        dataLoaded: true,
+        dataLoaded: true
       });
     }
     catch(err) {
+      console.log(err)
       this.setState({
         loading: false,
+        errorMessage: err,
         requestError: true
       });
     }
     
   }
 
-  //Update state of searchInput when user updates input field 
-  handleInput(input) {
+  handleSearchBoxInput(input) {
     this.setState({searchInput: input});
   }
 
-  //Disable error box
-  disableError() {
+  disableErrorBox() {
     this.setState({requestError: false});
   }
 
-  //Changes unit and updates temp data.
-  handleChangeUnit() {
-    (this.state.unit === '℃') ? this.setState({unit: '℉'}) : this.setState({unit: '℃'});
-    let tempDays = this.state.parsedResult.days;
-    if (this.state.unit === '℃') {
-      for(let i = 0; i < this.state.parsedResult.days.length; i++) {
-        for(let j = 0; j < this.state.parsedResult.days[i].length; j++) {
-          tempDays[i][j].temp = this.convertFromC(tempDays[i][j].temp);
-          tempDays[i][j].tempLow = this.convertFromC(tempDays[i][j].tempLow);
-          tempDays[i][j].tempHigh = this.convertFromC(tempDays[i][j].tempHigh);
-          tempDays[i][j].tempFeel = this.convertFromC(tempDays[i][j].tempFeel);
-        }
-      }
+  handleUnitChange() {
+    (this.state.unit === 'metric') ? this.setState({unit: 'imperial'}) : this.setState({unit: 'metric'});
+    let tempState = this.state.parsedResult; 
+    if (this.state.unit === 'metric') {
+      tempState.temp.main = this.convertFromMetric(this.state.parsedResult.temp.main);
+      tempState.temp.feel = this.convertFromMetric(this.state.parsedResult.temp.feel);
     } else {
-      for(let i = 0; i < this.state.parsedResult.days.length; i++) {
-        for(let j = 0; j < this.state.parsedResult.days[i].length; j++) {
-          tempDays[i][j].temp = this.convertFromF(tempDays[i][j].temp);
-          tempDays[i][j].tempLow = this.convertFromF(tempDays[i][j].tempLow);
-          tempDays[i][j].tempHigh = this.convertFromF(tempDays[i][j].tempHigh);
-          tempDays[i][j].tempFeel = this.convertFromF(tempDays[i][j].tempFeel);
-        }
-      }
+      tempState.temp.main = this.convertFromImperial(this.state.parsedResult.temp.main);
+      tempState.temp.feel = this.convertFromImperial(this.state.parsedResult.temp.feel);
     }
     this.setState({
-      parsedResult: {
-        days: tempDays
-      }
+      parsedResult: tempState
     });
   }
 
-  convertFromC (input) {
+  convertFromMetric (input) {
     return Math.round((input*(9/5))+32);
   }
-  convertFromF (input) {
+  convertFromImperial (input) {
     return Math.round((input-32)/(9/5));
   }
 
@@ -181,25 +152,26 @@ export default class WeatherApp extends React.Component {
     return (
       <Container maxWidth="sm">
         <SearchBar 
-        handleSubmit = {this.handleSubmit}
-        handleInput = {this.handleInput}
+        handleSubmit = {this.handleSearchBoxSubmit}
+        handleInput = {this.handleSearchBoxInput}
         />
         {this.state.dataLoaded ? 
           <DisplayWeather 
             weatherData = {this.state.parsedResult}
-            unit = {this.state.unit}
+            unit = {this.state.unit === 'metric' ? '℃' : '℉'}
           />
           : null}
         <ErrorNotification
         errorStatus = {this.state.requestError} 
-        disableError = {this.disableError}
+        disableError = {this.disableErrorBox}
+        errorMessage = {this.state.errorMessage}
         />
         <LoadingNotification 
           loadingStatus = {this.state.loading}
         /> 
         <ChangeUnitButton
-        unit = {this.state.unit}
-        handleClick = {this.handleChangeUnit} 
+        unit = {this.state.unit === 'metric' ? '℃' : '℉'}
+        handleClick = {this.handleUnitChange} 
         />
       </Container>
     );

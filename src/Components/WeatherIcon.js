@@ -20,7 +20,6 @@ const useStyles = makeStyles(() => ({
 }));
 
 
-//returns an image based in the id input
 export default function WeatherIcon(props) {
     const [icon, setIcon] = useState('');
     const classes = useStyles();

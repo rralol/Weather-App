@@ -7,7 +7,7 @@ export default function ErrorNotification(props) {
     return (
         <Snackbar open = {props.errorStatus} onClose={props.disableError}>
             <Alert variant="filled" severity="error">
-                Request error!
+                {props.errorMessage}
             </Alert>
         </Snackbar>
     );
